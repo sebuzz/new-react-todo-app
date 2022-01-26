@@ -1,21 +1,35 @@
-import React, { useState } from "react";
-import { v4 as uuid } from "uuid";
+import React, { useEffect, useState } from "react";
+
+const ENDPOINT = "http://localhost:1337/api/todos";
+
 const App = () => {
 	const [value, setValue] = useState("");
-	const [todos, setTodos] = useState([
-		{
-			name: "Buy milk",
-			isChecked: true,
-			id: uuid(),
-		},
-	]);
+	const [todos, setTodos] = useState([]);
+
+	useEffect(() => {
+		fetch(ENDPOINT)
+			.then(response => response.json())
+			.then(data => {
+				setTodos(data);
+			});
+	}, []);
 	return (
 		<div>
 			<h1>{value}</h1>
 			<form
 				onSubmit={event_ => {
 					event_.preventDefault();
-					setTodos([...todos, { name: value, isChecked: false, id: uuid() }]);
+					fetch(ENDPOINT, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({ name: value }),
+					})
+						.then(response => response.json())
+						.then(data => {
+							setTodos([...todos, data]);
+						});
 					setValue("");
 				}}
 			>
@@ -39,9 +53,22 @@ const App = () => {
 									type="checkbox"
 									checked={todo.isChecked}
 									onChange={() => {
-										const update = [...todos];
-										update[index].isChecked = !update[index].isChecked;
-										setTodos(update);
+										fetch(ENDPOINT, {
+											method: "PUT",
+											headers: {
+												"Content-Type": "application/json",
+											},
+											body: JSON.stringify({
+												id: todo.id,
+												update: { isChecked: !todo.isChecked },
+											}),
+										})
+											.then(response => response.json())
+											.then(data => {
+												const update = [...todos];
+												update[index] = data;
+												setTodos(update);
+											});
 									}}
 								/>
 								<span
@@ -54,9 +81,17 @@ const App = () => {
 							</label>
 							<button
 								onClick={() => {
-									const update = [...todos];
-									update.splice(index, 1);
-									setTodos(update);
+									fetch(ENDPOINT, {
+										method: "DELETE",
+										headers: {
+											"Content-Type": "application/json",
+										},
+										body: JSON.stringify({ id: todo.id }),
+									}).then(() => {
+										const update = [...todos];
+										update.splice(index, 1);
+										setTodos(update);
+									});
 								}}
 							>
 								Delete
