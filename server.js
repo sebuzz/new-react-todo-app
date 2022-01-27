@@ -1,11 +1,11 @@
 import cors from "cors";
 import express from "express";
 import { readFile, writeFile } from "fs/promises";
-import { v4 as uuid } from "uuid";
+// import { v4 as uuid } from "uuid"; // local DB
 
 import dotenv from "dotenv";
 dotenv.config();
-import { connectDatabase } from "./utils/database.js";
+import { connectDatabase, getTodoCollection } from "./utils/database.js";
 
 if (!process.env.MONGODB_URI) {
 	throw new Error("No MONGODB_URI available in dotenv");
@@ -25,6 +25,7 @@ const DATABASE_URI = "./database/database.json";
 
 app.get("/api/todos", async (request, response, next) => {
 	try {
+		// For local Database
 		const data = await readFile(DATABASE_URI, "utf8");
 		const json = JSON.parse(data);
 		response.json(json.todos);
@@ -35,19 +36,25 @@ app.get("/api/todos", async (request, response, next) => {
 
 app.post("/api/todos", async (request, response, next) => {
 	try {
-		const data = await readFile(DATABASE_URI, "utf8");
-		const json = JSON.parse(data);
+		// For local DB
+		// const data = await readFile(DATABASE_URI, "utf8");
+		// const json = JSON.parse(data);
+
+		const collection = getTodoCollection();
 
 		const todo = {
 			...request.body,
 			isChecked: false,
-			id: uuid(),
+			// id: uuid(),
 		};
 
-		json.todos.push(todo);
-		await writeFile(DATABASE_URI, JSON.stringify(json, null, 4));
-		response.status(201);
-		response.json(todo);
+		// json.todos.push(todo);
+		// await writeFile(DATABASE_URI, JSON.stringify(json, null, 4));
+
+		const responseFromMongoDb = await collection.insertOne(todo);
+		console.log(responseFromMongoDb);
+		response.status(201).send(`Insertion successful. id ${responseFromMongoDb.insertedId}`);
+		// response.json(todo);
 	} catch (error_) {
 		next(error_);
 	}
